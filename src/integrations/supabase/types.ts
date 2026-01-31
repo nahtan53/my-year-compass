@@ -14,7 +14,129 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      daily_logs: {
+        Row: {
+          alcohol: boolean
+          created_at: string
+          daily_phrase: string | null
+          date: string
+          id: string
+          meat_type: string
+          reading: boolean
+          screen_limit: boolean
+          sport_status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alcohol?: boolean
+          created_at?: string
+          daily_phrase?: string | null
+          date: string
+          id?: string
+          meat_type?: string
+          reading?: boolean
+          screen_limit?: boolean
+          sport_status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alcohol?: boolean
+          created_at?: string
+          daily_phrase?: string | null
+          date?: string
+          id?: string
+          meat_type?: string
+          reading?: boolean
+          screen_limit?: boolean
+          sport_status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      goals: {
+        Row: {
+          category: string
+          created_at: string
+          current_value: number
+          icon: string
+          id: string
+          is_completed: boolean
+          status: string
+          target_value: number | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          current_value?: number
+          icon?: string
+          id?: string
+          is_completed?: boolean
+          status?: string
+          target_value?: number | null
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          current_value?: number
+          icon?: string
+          id?: string
+          is_completed?: boolean
+          status?: string
+          target_value?: number | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      medical_events: {
+        Row: {
+          created_at: string
+          id: string
+          interval_months: number
+          label: string
+          last_date: string
+          next_due_date: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interval_months?: number
+          label: string
+          last_date: string
+          next_due_date: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interval_months?: number
+          label?: string
+          last_date?: string
+          next_due_date?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

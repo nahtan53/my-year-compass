@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,8 +23,7 @@ import {
   Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SportStatus, MeatType } from '@/types/goals';
-import { toast } from '@/hooks/use-toast';
+import { useDailyLogs, SportStatus, MeatType } from '@/hooks/useDailyLogs';
 
 interface DailyLoggerModalProps {
   open: boolean;
@@ -45,6 +44,7 @@ const meatOptions: { value: MeatType; label: string; icon: React.ReactNode }[] =
 ];
 
 export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) {
+  const { getTodayLog, saveLog } = useDailyLogs();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   
@@ -57,36 +57,59 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
 
   const today = new Date();
   const formattedDate = format(today, "EEEE d MMMM", { locale: fr });
+  const todayStr = today.toISOString().split('T')[0];
+
+  // Load existing data when modal opens
+  useEffect(() => {
+    if (open) {
+      const existingLog = getTodayLog();
+      if (existingLog) {
+        setSportStatus(existingLog.sport_status);
+        setMeatType(existingLog.meat_type);
+        setAlcohol(existingLog.alcohol);
+        setScreenLimit(existingLog.screen_limit);
+        setReading(existingLog.reading);
+        setDailyPhrase(existingLog.daily_phrase || '');
+      }
+    }
+  }, [open, getTodayLog]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await saveLog({
+      date: todayStr,
+      sport_status: sportStatus,
+      meat_type: meatType,
+      alcohol,
+      screen_limit: screenLimit,
+      reading,
+      daily_phrase: dailyPhrase,
+    });
     
     setShowSuccess(true);
-    
-    toast({
-      title: "Journée enregistrée ! 🎉",
-      description: "Tes données ont été sauvegardées avec succès.",
-    });
 
     setTimeout(() => {
       setShowSuccess(false);
       onOpenChange(false);
-      // Reset form
-      setSportStatus('rest');
-      setMeatType('none');
-      setAlcohol(false);
-      setScreenLimit(false);
-      setReading(false);
-      setDailyPhrase('');
       setIsSubmitting(false);
     }, 1500);
   };
 
+  const resetForm = () => {
+    setSportStatus('rest');
+    setMeatType('none');
+    setAlcohol(false);
+    setScreenLimit(false);
+    setReading(false);
+    setDailyPhrase('');
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) resetForm();
+      onOpenChange(isOpen);
+    }}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         {showSuccess ? (
           <div className="flex flex-col items-center justify-center py-12 animate-scale-in">

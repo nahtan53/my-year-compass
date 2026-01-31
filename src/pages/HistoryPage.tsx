@@ -1,16 +1,19 @@
-import { mockDailyLogs } from '@/data/mockData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { Dumbbell, BookOpen, Quote } from 'lucide-react';
+import { Dumbbell, BookOpen, Quote, Loader2 } from 'lucide-react';
+import { useDailyLogs } from '@/hooks/useDailyLogs';
 
 const HistoryPage = () => {
+  const { logs, loading, getSportDays, getReadingDays } = useDailyLogs();
   const today = new Date();
   const currentMonth = today;
-  const previousMonth = subMonths(today, 1);
 
-  const renderHeatmap = (month: Date, dataKey: 'sport' | 'reading') => {
+  const sportDays = getSportDays();
+  const readingDays = getReadingDays();
+
+  const renderHeatmap = (month: Date, activeDays: string[]) => {
     const start = startOfMonth(month);
     const end = endOfMonth(month);
     const days = eachDayOfInterval({ start, end });
@@ -36,17 +39,8 @@ const HistoryPage = () => {
         {/* Day cells */}
         {days.map(day => {
           const dateStr = format(day, 'yyyy-MM-dd');
-          const log = mockDailyLogs.find(l => l.date === dateStr);
-          
-          let level = 0;
-          if (log) {
-            if (dataKey === 'sport') {
-              level = log.sportStatus !== 'rest' ? 4 : 0;
-            } else if (dataKey === 'reading') {
-              level = log.reading ? 4 : 0;
-            }
-          }
-          
+          const isActive = activeDays.includes(dateStr);
+          const level = isActive ? 4 : 0;
           const isToday = isSameDay(day, today);
           
           return (
@@ -57,7 +51,7 @@ const HistoryPage = () => {
                 `heatmap-${level}`,
                 isToday && 'ring-2 ring-primary ring-offset-1 ring-offset-background'
               )}
-              title={`${format(day, 'dd MMM', { locale: fr })}${log ? ` - ${dataKey === 'sport' ? log.sportStatus : log.reading ? 'Lu' : 'Non lu'}` : ''}`}
+              title={`${format(day, 'dd MMM', { locale: fr })} - ${isActive ? 'Fait' : 'Non fait'}`}
             />
           );
         })}
@@ -65,9 +59,17 @@ const HistoryPage = () => {
     );
   };
 
-  const phrasesWithDates = mockDailyLogs
-    .filter(log => log.dailyPhrase && log.dailyPhrase.trim().length > 0)
+  const phrasesWithDates = logs
+    .filter(log => log.daily_phrase && log.daily_phrase.trim().length > 0)
     .slice(0, 10);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -82,7 +84,7 @@ const HistoryPage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {renderHeatmap(currentMonth, 'sport')}
+          {renderHeatmap(currentMonth, sportDays)}
           <div className="flex items-center justify-end gap-2 mt-3 text-xs text-muted-foreground">
             <span>Moins</span>
             <div className="flex gap-0.5">
@@ -104,7 +106,7 @@ const HistoryPage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {renderHeatmap(currentMonth, 'reading')}
+          {renderHeatmap(currentMonth, readingDays)}
         </CardContent>
       </Card>
 
@@ -127,7 +129,7 @@ const HistoryPage = () => {
                 key={log.id}
                 className="p-3 rounded-lg bg-muted/50 border border-border/50"
               >
-                <p className="text-sm leading-relaxed">{log.dailyPhrase}</p>
+                <p className="text-sm leading-relaxed">{log.daily_phrase}</p>
                 <p className="text-xs text-muted-foreground mt-2">
                   {format(new Date(log.date), "EEEE d MMMM yyyy", { locale: fr })}
                 </p>
