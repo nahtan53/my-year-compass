@@ -75,7 +75,7 @@ export const useDailyLogs = () => {
         // Insert new log
         const { data, error } = await supabase
           .from('daily_logs')
-          .insert({ ...logData, user_id: user.id })
+          .insert(logData)
           .select()
           .single();
 
