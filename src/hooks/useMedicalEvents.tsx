@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 
 export type MedicalEventType = 'dentist' | 'blood-donation' | 'doctor' | 'other';
 
 export interface MedicalEvent {
   id: string;
-  user_id: string;
+  user_id: string | null;
   type: MedicalEventType;
   label: string;
   last_date: string;
@@ -20,16 +19,9 @@ export interface MedicalEvent {
 export const useMedicalEvents = () => {
   const [events, setEvents] = useState<MedicalEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchEvents = async () => {
-    if (!user) {
-      setEvents([]);
-      setLoading(false);
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from('medical_events')
@@ -52,15 +44,13 @@ export const useMedicalEvents = () => {
 
   useEffect(() => {
     fetchEvents();
-  }, [user]);
+  }, []);
 
   const addEvent = async (event: Omit<MedicalEvent, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (!user) return;
-
     try {
       const { data, error } = await supabase
         .from('medical_events')
-        .insert({ ...event, user_id: user.id })
+        .insert(event)
         .select()
         .single();
 

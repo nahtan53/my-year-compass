@@ -26,7 +26,7 @@ export type Database = {
           screen_limit: boolean
           sport_status: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           alcohol?: boolean
@@ -39,7 +39,7 @@ export type Database = {
           screen_limit?: boolean
           sport_status?: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           alcohol?: boolean
@@ -52,7 +52,7 @@ export type Database = {
           screen_limit?: boolean
           sport_status?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -69,7 +69,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           category?: string
@@ -83,7 +83,7 @@ export type Database = {
           title: string
           type: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           category?: string
@@ -97,7 +97,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -111,7 +111,7 @@ export type Database = {
           next_due_date: string
           type: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -122,7 +122,7 @@ export type Database = {
           next_due_date: string
           type: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -133,7 +133,7 @@ export type Database = {
           next_due_date?: string
           type?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }

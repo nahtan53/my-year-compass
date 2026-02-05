@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 
 export interface Goal {
   id: string;
-  user_id: string;
+  user_id: string | null;
   title: string;
   type: 'one-shot' | 'counter' | 'habit';
   category: string;
@@ -21,16 +20,9 @@ export interface Goal {
 export const useGoals = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchGoals = async () => {
-    if (!user) {
-      setGoals([]);
-      setLoading(false);
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from('goals')
@@ -53,15 +45,13 @@ export const useGoals = () => {
 
   useEffect(() => {
     fetchGoals();
-  }, [user]);
+  }, []);
 
   const addGoal = async (goal: Omit<Goal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (!user) return;
-
     try {
       const { data, error } = await supabase
         .from('goals')
-        .insert({ ...goal, user_id: user.id })
+        .insert(goal)
         .select()
         .single();
 
