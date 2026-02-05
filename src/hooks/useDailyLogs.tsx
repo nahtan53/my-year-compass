@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 
 export type SportStatus = 'rest' | 'running' | 'muscu' | 'other';
@@ -23,16 +22,9 @@ export interface DailyLog {
 export const useDailyLogs = () => {
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchLogs = async () => {
-    if (!user) {
-      setLogs([]);
-      setLoading(false);
-      return;
-    }
-
     try {
       const { data, error } = await supabase
         .from('daily_logs')
@@ -55,7 +47,7 @@ export const useDailyLogs = () => {
 
   useEffect(() => {
     fetchLogs();
-  }, [user]);
+  }, []);
 
   const getTodayLog = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -67,8 +59,6 @@ export const useDailyLogs = () => {
   };
 
   const saveLog = async (logData: Omit<DailyLog, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (!user) return;
-
     const existingLog = getLogByDate(logData.date);
 
     try {
