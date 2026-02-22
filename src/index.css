@@ -108,8 +108,12 @@
     @apply border-border;
   }
 
-  html {
-    @apply dark;
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html:not(.dark) {
+    color-scheme: light;
   }
 
   body {

@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, PenLine, Calendar, Stethoscope } from 'lucide-react';
+import { LayoutDashboard, BarChart3, ChefHat, Stethoscope } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/log', icon: PenLine, label: 'Journal' },
-  { to: '/history', icon: Calendar, label: 'Historique' },
+  { to: '/analyse', icon: BarChart3, label: 'Skibidi Journée' },
+  { to: '/recettes', icon: ChefHat, label: 'Recettes' },
   { to: '/medical', icon: Stethoscope, label: 'Médical' },
 ];
 

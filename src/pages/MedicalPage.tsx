@@ -1,3 +1,6 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MedicalEvent, MedicalEventType } from '@/types/goals';
+import { fetchMedicalEvents, upsertMedicalEvent } from '@/lib/supabase-api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -5,7 +8,7 @@ import { format, differenceInDays, addMonths, isPast } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Stethoscope, Heart, Smile, Calendar, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useMedicalEvents, MedicalEventType } from '@/hooks/useMedicalEvents';
+import { toast } from '@/hooks/use-toast';
 
 const iconMap: Record<MedicalEventType, React.ComponentType<{ className?: string }>> = {
   dentist: Smile,
@@ -15,7 +18,27 @@ const iconMap: Record<MedicalEventType, React.ComponentType<{ className?: string
 };
 
 const MedicalPage = () => {
-  const { events, loading, updateEvent } = useMedicalEvents();
+  const queryClient = useQueryClient();
+
+  const { data: events = [], isLoading } = useQuery({
+    queryKey: ['medicalEvents'],
+    queryFn: fetchMedicalEvents,
+    refetchOnMount: true,
+  });
+
+  const markDoneMutation = useMutation({
+    mutationFn: (event: MedicalEvent) => {
+      const newLastDate = format(new Date(), 'yyyy-MM-dd');
+      const newNextDate = format(addMonths(new Date(), event.intervalMonths), 'yyyy-MM-dd');
+      return upsertMedicalEvent({
+        ...event,
+        lastDate: newLastDate,
+        nextDueDate: newNextDate,
+      });
+    },
+    onSuccess: () => queryClient.refetchQueries({ queryKey: ['medicalEvents'] }),
+    onError: (err) => toast({ title: 'Erreur', description: String(err), variant: 'destructive' }),
+  });
 
   const getStatusInfo = (nextDueDate: string) => {
     const today = new Date();
@@ -30,19 +53,13 @@ const MedicalPage = () => {
     return { status: 'ok', label: 'OK', color: 'bg-success/20 text-success' };
   };
 
-  const handleMarkDone = async (id: string, intervalMonths: number) => {
-    const newLastDate = format(new Date(), 'yyyy-MM-dd');
-    const newNextDate = format(addMonths(new Date(), intervalMonths), 'yyyy-MM-dd');
-    
-    await updateEvent(id, {
-      last_date: newLastDate,
-      next_due_date: newNextDate,
-    });
+  const handleMarkDone = (event: MedicalEvent) => {
+    markDoneMutation.mutate(event);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center min-h-[40vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -71,8 +88,8 @@ const MedicalPage = () => {
         <div className="space-y-3">
           {events.map(event => {
             const Icon = iconMap[event.type] || Calendar;
-            const { label, color } = getStatusInfo(event.next_due_date);
-            const dueDate = new Date(event.next_due_date);
+            const { label, color } = getStatusInfo(event.nextDueDate);
+            const dueDate = new Date(event.nextDueDate);
             const daysUntil = differenceInDays(dueDate, new Date());
 
             return (
@@ -94,7 +111,7 @@ const MedicalPage = () => {
                       <div className="text-sm text-muted-foreground space-y-1">
                         <p>
                           <span className="text-foreground/70">Dernier : </span>
-                          {format(new Date(event.last_date), "d MMM yyyy", { locale: fr })}
+                          {format(new Date(event.lastDate), "d MMM yyyy", { locale: fr })}
                         </p>
                         <p className="flex items-center gap-1">
                           <span className="text-foreground/70">Prochain : </span>
@@ -109,16 +126,16 @@ const MedicalPage = () => {
                         </p>
                       </div>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 h-9"
-                        onClick={() => handleMarkDone(event.id, event.interval_months)}
-                      >
-                        <Check className="w-4 h-4 mr-1.5" />
-                        Marquer comme fait
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 h-9"
+                      disabled={markDoneMutation.isPending}
+                      onClick={() => handleMarkDone(event)}
+                    >
+                      <Check className="w-4 h-4 mr-1.5" />
+                      Marquer comme fait
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -127,7 +144,6 @@ const MedicalPage = () => {
         </div>
       )}
 
-      {/* Info box */}
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="p-4 flex gap-3">
           <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
