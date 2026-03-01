@@ -15,16 +15,30 @@ export interface Goal {
 }
 
 export type SportStatus = 'rest' | 'running' | 'muscu' | 'other';
-export type MeatType = 'none' | 'chicken' | 'red';
+
+/** Type de viande / repas : déjeuner et dîner séparés */
+export type MeatType =
+  | 'none'
+  | 'red'      // viande rouge
+  | 'chicken'  // poulet
+  | 'duck'     // canard
+  | 'pork'     // porc
+  | 'lamb'     // mouton
+  | 'vegetarian'; // végétarien
 
 export interface DailyLog {
   id: string;
   date: string; // ISO date string YYYY-MM-DD
   sportStatus: SportStatus;
-  meatType: MeatType;
+  /** Viande au déjeuner */
+  meatLunch: MeatType;
+  /** Viande au dîner */
+  meatDinner: MeatType;
   alcohol: boolean;
   screenLimit: boolean;
   reading: boolean;
+  /** Négociation avec le personnel (tracking discret) */
+  negotiationStaff: boolean;
   dailyPhrase: string;
 }
 

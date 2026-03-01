@@ -16,15 +16,17 @@ create table if not exists public.goals (
   updated_at timestamptz default now()
 );
 
--- Table des logs quotidiens
+-- Table des logs quotidiens (déjeuner et dîner séparés)
 create table if not exists public.daily_logs (
   id text primary key default (gen_random_uuid()::text),
   date date not null unique,
   sport_status text not null check (sport_status in ('rest', 'running', 'muscu', 'other')),
-  meat_type text not null check (meat_type in ('none', 'chicken', 'red')),
+  meat_lunch text not null default 'none' check (meat_lunch in ('none', 'red', 'chicken', 'duck', 'pork', 'lamb', 'vegetarian')),
+  meat_dinner text not null default 'none' check (meat_dinner in ('none', 'red', 'chicken', 'duck', 'pork', 'lamb', 'vegetarian')),
   alcohol boolean not null default false,
   screen_limit boolean not null default false,
   reading boolean not null default false,
+  negotiation_staff boolean not null default false,
   daily_phrase text default '',
   created_at timestamptz default now()
 );

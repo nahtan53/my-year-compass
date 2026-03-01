@@ -11,6 +11,7 @@ import {
   BarChart3,
   Dumbbell,
   BookOpen,
+  Sparkles,
   Target,
   Stethoscope,
   Loader2,
@@ -21,6 +22,7 @@ import {
   Moon,
   ChevronLeft,
   ChevronRight,
+  Wine,
 } from 'lucide-react';
 import { fetchGoals, fetchDailyLogs, fetchMedicalEvents } from '@/lib/supabase-api';
 import { DailyLoggerModal } from '@/components/daily/DailyLoggerModal';
@@ -41,14 +43,22 @@ function useMonthlyChartData(dailyLogs: DailyLog[], startMonth: Date, endMonth: 
       sport: number;
       reading: number;
       screenLimit: number;
+      /** Jours sans alcool (alcohol === false ? 1 : 0) */
+      noAlcohol: number;
+      /** Jours sans « négociation avec le personnel » (negotiationStaff === false ? 1 : 0) */
+      noNegotiation: number;
       sportCumul: number | null;
       readingCumul: number | null;
       screenCumul: number | null;
+      noAlcoholCumul: number | null;
+      noNegotiationCumul: number | null;
     };
     const data: DayData[] = [];
     let sportCumul = 0;
     let readingCumul = 0;
     let screenCumul = 0;
+    let noAlcoholCumul = 0;
+    let noNegotiationCumul = 0;
 
     for (let d = 1; d <= daysInMonth; d++) {
       const date = addDays(startMonth, d - 1);
@@ -59,18 +69,26 @@ function useMonthlyChartData(dailyLogs: DailyLog[], startMonth: Date, endMonth: 
         const sport = log.sportStatus !== 'rest' ? 1 : 0;
         const reading = log.reading ? 1 : 0;
         const screen = log.screenLimit ? 1 : 0;
+        const noAlcohol = log.alcohol ? 0 : 1;
+        const noNegotiation = log.negotiationStaff ? 0 : 1;
         sportCumul += sport;
         readingCumul += reading;
         screenCumul += screen;
+        noAlcoholCumul += noAlcohol;
+        noNegotiationCumul += noNegotiation;
         data.push({
           day: d,
           label: String(d),
           sport,
           reading,
           screenLimit: screen,
+          noAlcohol,
+          noNegotiation,
           sportCumul,
           readingCumul,
           screenCumul,
+          noAlcoholCumul,
+          noNegotiationCumul,
         });
       } else {
         data.push({
@@ -79,9 +97,13 @@ function useMonthlyChartData(dailyLogs: DailyLog[], startMonth: Date, endMonth: 
           sport: 0,
           reading: 0,
           screenLimit: 0,
+          noAlcohol: 0,
+          noNegotiation: 0,
           sportCumul: null,
           readingCumul: null,
           screenCumul: null,
+          noAlcoholCumul: null,
+          noNegotiationCumul: null,
         });
       }
     }
@@ -91,28 +113,31 @@ function useMonthlyChartData(dailyLogs: DailyLog[], startMonth: Date, endMonth: 
 
 const AnalysePage = () => {
   const [isLoggerOpen, setIsLoggerOpen] = useState(false);
+  const [showNegotiationMetric, setShowNegotiationMetric] = useState(true);
   const now = new Date();
   const [viewedMonth, setViewedMonth] = useState(() => startOfMonth(now));
   const startMonth = viewedMonth;
   const endMonth = endOfMonth(viewedMonth);
 
-  const { data: goals = [], isLoading: goalsLoading } = useQuery({
+  const { data: goals = [], isLoading: goalsLoading, isError: goalsError, error: goalsErr } = useQuery({
     queryKey: ['goals'],
     queryFn: fetchGoals,
     refetchOnMount: true,
   });
-  const { data: dailyLogs = [], isLoading: logsLoading } = useQuery({
+  const { data: dailyLogs = [], isLoading: logsLoading, isError: logsError, error: logsErr } = useQuery({
     queryKey: ['dailyLogs'],
     queryFn: fetchDailyLogs,
     refetchOnMount: true,
   });
-  const { data: medicalEvents = [], isLoading: medicalLoading } = useQuery({
+  const { data: medicalEvents = [], isLoading: medicalLoading, isError: medicalError, error: medicalErr } = useQuery({
     queryKey: ['medicalEvents'],
     queryFn: fetchMedicalEvents,
     refetchOnMount: true,
   });
 
   const isLoading = goalsLoading || logsLoading || medicalLoading;
+  const isError = goalsError || logsError || medicalError;
+  const errorMessage = goalsErr ? String(goalsErr) : logsErr ? String(logsErr) : medicalErr ? String(medicalErr) : null;
 
   const normalizeDate = (d: string) => (d.includes('T') ? d.slice(0, 10) : d);
   const logsThisMonth = dailyLogs.filter(log => {
@@ -124,6 +149,9 @@ const AnalysePage = () => {
   const sportDaysThisMonth = logsThisMonth.filter(l => l.sportStatus !== 'rest').length;
   const readingDaysThisMonth = logsThisMonth.filter(l => l.reading).length;
   const screenLimitDaysThisMonth = logsThisMonth.filter(l => l.screenLimit).length;
+  // Inversés : on compte les jours SANS alcool / SANS négociation
+  const noAlcoholDaysThisMonth = logsThisMonth.filter(l => !l.alcohol).length;
+  const noNegotiationDaysThisMonth = logsThisMonth.filter(l => !l.negotiationStaff).length;
   const daysInMonth = endMonth.getDate();
 
   const monthlyChartData = useMonthlyChartData(dailyLogs, startMonth, endMonth);
@@ -150,6 +178,20 @@ const AnalysePage = () => {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError && errorMessage) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm">
+          <p className="font-medium text-destructive mb-1">Impossible de charger les données</p>
+          <p className="text-muted-foreground font-mono text-xs mb-3">{errorMessage}</p>
+          <p className="text-muted-foreground text-xs">
+            Vérifie ton <code className="bg-muted px-1 rounded">.env</code> et redémarre <code className="bg-muted px-1 rounded">npm run dev</code>.
+          </p>
+        </div>
       </div>
     );
   }
@@ -202,10 +244,21 @@ const AnalysePage = () => {
       {/* Métriques du mois : survoler pour afficher le graphique cumulatif */}
       <Card className="border-border/50">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            Ce mois-ci
-          </CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              Ce mois-ci
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowNegotiationMetric(v => !v)}
+              aria-label={showNegotiationMetric ? 'Masquer la négociation' : 'Afficher la négociation'}
+            >
+              <Sparkles className="w-4 h-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -304,6 +357,72 @@ const AnalysePage = () => {
                 </ChartContainer>
               </HoverCardContent>
             </HoverCard>
+
+            <HoverCard openDelay={200} closeDelay={100}>
+              <HoverCardTrigger asChild>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
+                  <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
+                    <Wine className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{noAlcoholDaysThisMonth}</div>
+                    <div className="text-xs text-muted-foreground">jours sans alcool / {daysInMonth}</div>
+                    <Progress
+                      value={daysInMonth ? Math.round((noAlcoholDaysThisMonth / daysInMonth) * 100) : 0}
+                      className="h-1.5 mt-1 max-w-[120px]"
+                    />
+                  </div>
+                </div>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-80 p-0" align="start">
+                <div className="p-3 pb-0">
+                  <p className="text-sm font-medium">Sans alcool</p>
+                </div>
+                <ChartContainer config={{ noAlcoholCumul: { label: 'Jours sans alcool', color: 'hsl(var(--primary))' } }} className="h-[180px] w-full">
+                  <LineChart data={monthlyChartData} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} width={24} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="noAlcoholCumul" stroke="var(--color-noAlcoholCumul)" strokeWidth={2} dot={false} connectNulls={false} />
+                  </LineChart>
+                </ChartContainer>
+              </HoverCardContent>
+            </HoverCard>
+
+            {showNegotiationMetric && (
+              <HoverCard openDelay={200} closeDelay={100}>
+                <HoverCardTrigger asChild>
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 cursor-pointer hover:border-primary/50 transition-colors">
+                    <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
+                      <Sparkles className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{noNegotiationDaysThisMonth}</div>
+                      <div className="text-xs text-muted-foreground">jours sans négociation / {daysInMonth}</div>
+                      <Progress
+                        value={daysInMonth ? Math.round((noNegotiationDaysThisMonth / daysInMonth) * 100) : 0}
+                        className="h-1.5 mt-1 max-w-[120px]"
+                      />
+                    </div>
+                  </div>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80 p-0" align="start">
+                  <div className="p-3 pb-0">
+                    <p className="text-sm font-medium">Négociation avec le personnel (jours sans)</p>
+                  </div>
+                  <ChartContainer config={{ noNegotiationCumul: { label: 'Jours sans négociation', color: 'hsl(var(--primary))' } }} className="h-[180px] w-full">
+                    <LineChart data={monthlyChartData} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} width={24} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="noNegotiationCumul" stroke="var(--color-noNegotiationCumul)" strokeWidth={2} dot={false} connectNulls={false} />
+                    </LineChart>
+                  </ChartContainer>
+                </HoverCardContent>
+              </HoverCard>
+            )}
           </div>
         </CardContent>
       </Card>

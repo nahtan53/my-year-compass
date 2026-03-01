@@ -19,6 +19,7 @@ import {
 import { Goal, GoalType } from '@/types/goals';
 import { toast } from '@/hooks/use-toast';
 import { upsertGoal } from '@/lib/supabase-api';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { Sparkles, Check } from 'lucide-react';
 
 interface CreateGoalModalProps {
@@ -77,15 +78,27 @@ export function CreateGoalModal({ open, onOpenChange }: CreateGoalModalProps) {
       }, 1500);
     },
     onError: (err) => {
+      const msg = String(err);
+      const isSupabaseUnconfigured = msg.includes('Supabase non configuré');
       toast({
-        title: 'Erreur',
-        description: String(err),
+        title: isSupabaseUnconfigured ? 'Supabase non configuré' : 'Erreur',
+        description: isSupabaseUnconfigured
+          ? 'Ajoute VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans ton fichier .env, puis redémarre le serveur (npm run dev).'
+          : msg,
         variant: 'destructive',
       });
     },
   });
 
   const handleSubmit = () => {
+    if (!isSupabaseConfigured()) {
+      toast({
+        title: 'Supabase non configuré',
+        description: 'Ajoute VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans ton fichier .env, puis redémarre le serveur (Ctrl+C puis npm run dev).',
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!title.trim() || !category.trim()) {
       toast({
         title: 'Champs requis',

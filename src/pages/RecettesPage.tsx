@@ -94,7 +94,7 @@ const RecettesPage = () => {
   const [rouletteHistory, setRouletteHistory] = useState<string[]>(getRouletteHistory);
   const [drawnRecipe, setDrawnRecipe] = useState<Recipe | null>(null);
 
-  const { data: recipes = [], isLoading } = useQuery({
+  const { data: recipes = [], isLoading, isError, error } = useQuery({
     queryKey: ['recipes'],
     queryFn: fetchRecipes,
     refetchOnMount: true,
@@ -114,6 +114,20 @@ const RecettesPage = () => {
     pushRouletteHistory(recipe.id);
     setRouletteHistory(getRouletteHistory());
   }, [recipes, rouletteHistory]);
+
+  if (isError && error) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm">
+          <p className="font-medium text-destructive mb-1">Impossible de charger les recettes</p>
+          <p className="text-muted-foreground font-mono text-xs mb-3">{String(error)}</p>
+          <p className="text-muted-foreground text-xs">
+            Vérifie ton <code className="bg-muted px-1 rounded">.env</code> et redémarre <code className="bg-muted px-1 rounded">npm run dev</code>.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

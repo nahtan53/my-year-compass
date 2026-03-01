@@ -24,10 +24,10 @@ import {
   Sparkles,
   Check,
   Calendar,
+  Leaf,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SportStatus, MeatType, DailyLog } from '@/types/goals';
-import { toast } from '@/hooks/use-toast';
 import { toast } from '@/hooks/use-toast';
 import { upsertDailyLog, fetchGoals, updateGoal } from '@/lib/supabase-api';
 import { computeHabitCurrentValue } from '@/lib/habit-sync';
@@ -48,8 +48,12 @@ const sportOptions: { value: SportStatus; label: string; icon: React.ReactNode }
 
 const meatOptions: { value: MeatType; label: string; icon: React.ReactNode }[] = [
   { value: 'none', label: 'Aucune', icon: <Ban className="w-4 h-4" /> },
+  { value: 'red', label: 'Viande rouge', icon: <Beef className="w-4 h-4" /> },
   { value: 'chicken', label: 'Poulet', icon: <Drumstick className="w-4 h-4" /> },
-  { value: 'red', label: 'Rouge', icon: <Beef className="w-4 h-4" /> },
+  { value: 'duck', label: 'Canard', icon: <span className="text-lg">🦆</span> },
+  { value: 'pork', label: 'Porc', icon: <span className="text-lg">🐷</span> },
+  { value: 'lamb', label: 'Mouton', icon: <span className="text-lg">🐑</span> },
+  { value: 'vegetarian', label: 'Végétarien', icon: <Leaf className="w-4 h-4" /> },
 ];
 
 const todayAtStart = () => startOfDay(new Date());
@@ -60,10 +64,12 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
   const [selectedDate, setSelectedDate] = useState<Date>(todayAtStart);
   
   const [sportStatus, setSportStatus] = useState<SportStatus>('rest');
-  const [meatType, setMeatType] = useState<MeatType>('none');
+  const [meatLunch, setMeatLunch] = useState<MeatType>('none');
+  const [meatDinner, setMeatDinner] = useState<MeatType>('none');
   const [alcohol, setAlcohol] = useState(false);
   const [screenLimit, setScreenLimit] = useState(false);
   const [reading, setReading] = useState(false);
+  const [negotiationStaff, setNegotiationStaff] = useState(false);
   const [dailyPhrase, setDailyPhrase] = useState('');
 
   const today = todayAtStart();
@@ -87,17 +93,21 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
     const log = logs.find(l => normalizeDate(l.date) === dateStr || l.date.startsWith(dateStr));
     if (log) {
       setSportStatus(log.sportStatus);
-      setMeatType(log.meatType);
+      setMeatLunch(log.meatLunch);
+      setMeatDinner(log.meatDinner);
       setAlcohol(log.alcohol);
       setScreenLimit(log.screenLimit);
       setReading(log.reading);
+      setNegotiationStaff(log.negotiationStaff);
       setDailyPhrase(log.dailyPhrase ?? '');
     } else {
       setSportStatus('rest');
-      setMeatType('none');
+      setMeatLunch('none');
+      setMeatDinner('none');
       setAlcohol(false);
       setScreenLimit(false);
       setReading(false);
+      setNegotiationStaff(false);
       setDailyPhrase('');
     }
   }, [open, dateStr]);
@@ -136,17 +146,23 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
         onOpenChange(false);
         setSelectedDate(todayAtStart());
         setSportStatus('rest');
-        setMeatType('none');
+        setMeatLunch('none');
+        setMeatDinner('none');
         setAlcohol(false);
         setScreenLimit(false);
         setReading(false);
+        setNegotiationStaff(false);
         setDailyPhrase('');
       }, 1500);
     },
-    onError: (err) => {
+    onError: (err: unknown) => {
+      const message =
+        err instanceof Error ? err.message : (err && typeof (err as { message?: string }).message === 'string')
+          ? (err as { message: string }).message
+          : JSON.stringify(err);
       toast({
         title: 'Erreur',
-        description: String(err),
+        description: message,
         variant: 'destructive',
       });
     },
@@ -157,10 +173,12 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
       id: '', // upsert se fait sur date en base
       date: dateStr,
       sportStatus,
-      meatType,
+      meatLunch,
+      meatDinner,
       alcohol,
       screenLimit,
       reading,
+      negotiationStaff,
       dailyPhrase: dailyPhrase.trim(),
     };
     saveLogMutation.mutate(log);
@@ -238,17 +256,40 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
 
               <div className="space-y-3">
                 <Label className="text-sm font-medium">🍽️ Alimentation</Label>
+
                 <div className="space-y-2">
-                  <span className="text-xs text-muted-foreground">Viande consommée</span>
-                  <div className="grid grid-cols-3 gap-2">
+                  <span className="text-xs text-muted-foreground">Déjeuner</span>
+                  <div className="grid grid-cols-4 gap-2">
                     {meatOptions.map(option => (
                       <button
-                        key={option.value}
+                        key={`lunch-${option.value}`}
                         type="button"
-                        onClick={() => setMeatType(option.value)}
+                        onClick={() => setMeatLunch(option.value)}
                         className={cn(
-                          'flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all touch-target',
-                          meatType === option.value
+                          'flex flex-col items-center gap-1.5 p-2.5 rounded-lg border transition-all touch-target',
+                          meatLunch === option.value
+                            ? 'toggle-active border-primary'
+                            : 'border-border bg-card hover:border-primary/50'
+                        )}
+                      >
+                        {option.icon}
+                        <span className="text-xs font-medium">{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-xs text-muted-foreground">Dîner</span>
+                  <div className="grid grid-cols-4 gap-2">
+                    {meatOptions.map(option => (
+                      <button
+                        key={`dinner-${option.value}`}
+                        type="button"
+                        onClick={() => setMeatDinner(option.value)}
+                        className={cn(
+                          'flex flex-col items-center gap-1.5 p-2.5 rounded-lg border transition-all touch-target',
+                          meatDinner === option.value
                             ? 'toggle-active border-primary'
                             : 'border-border bg-card hover:border-primary/50'
                         )}
@@ -284,6 +325,13 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
                     <span className="text-sm">Lecture effectuée</span>
                   </div>
                   <Switch checked={reading} onCheckedChange={setReading} />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm">Négociation avec le personnel</span>
+                  </div>
+                  <Switch checked={negotiationStaff} onCheckedChange={setNegotiationStaff} />
                 </div>
               </div>
 

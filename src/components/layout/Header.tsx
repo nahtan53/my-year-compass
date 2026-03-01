@@ -1,7 +1,8 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useTheme } from 'next-themes';
-import { Sparkles, Sun, Moon } from 'lucide-react';
+import { Sparkles, Sun, Moon, LogOut } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -48,6 +49,22 @@ export function Header() {
                   {isDark ? 'Mode clair' : 'Mode sombre'}
                 </TooltipContent>
               </Tooltip>
+              {supabase && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                      onClick={() => supabase.auth.signOut()}
+                      aria-label="Se déconnecter"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Se déconnecter</TooltipContent>
+                </Tooltip>
+              )}
             </TooltipProviderLocal>
             <span className="text-2xl font-bold text-primary font-mono">2026</span>
           </div>

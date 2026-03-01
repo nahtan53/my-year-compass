@@ -14,12 +14,12 @@ const Dashboard = () => {
   const queryClient = useQueryClient();
   const [isCreateGoalOpen, setIsCreateGoalOpen] = useState(false);
 
-  const { data: goalsRaw = [], isLoading: goalsLoading } = useQuery({
+  const { data: goalsRaw = [], isLoading: goalsLoading, isError: goalsError, error: goalsErr } = useQuery({
     queryKey: ['goals'],
     queryFn: fetchGoals,
     refetchOnMount: true,
   });
-  const { data: dailyLogs = [], isLoading: logsLoading } = useQuery({
+  const { data: dailyLogs = [], isLoading: logsLoading, isError: logsError, error: logsErr } = useQuery({
     queryKey: ['dailyLogs'],
     queryFn: fetchDailyLogs,
     refetchOnMount: true,
@@ -44,6 +44,8 @@ const Dashboard = () => {
   }, [goalsRaw, dailyLogs]);
 
   const isLoading = goalsLoading || logsLoading;
+  const isError = goalsError || logsError;
+  const errorMessage = goalsErr ? String(goalsErr) : logsErr ? String(logsErr) : null;
 
   const updateGoalMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Goal> }) =>
@@ -106,6 +108,21 @@ const Dashboard = () => {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError && errorMessage) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm">
+          <p className="font-medium text-destructive mb-1">Impossible de charger les données</p>
+          <p className="text-muted-foreground font-mono text-xs mb-3">{errorMessage}</p>
+          <p className="text-muted-foreground text-xs">
+            Vérifie ton fichier <code className="bg-muted px-1 rounded">.env</code> (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY), que les tables existent dans Supabase, puis redémarre le serveur (<code className="bg-muted px-1 rounded">npm run dev</code>).
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">Tu peux quand même créer des objectifs si Supabase est correctement configuré après redémarrage.</p>
       </div>
     );
   }

@@ -20,7 +20,7 @@ const iconMap: Record<MedicalEventType, React.ComponentType<{ className?: string
 const MedicalPage = () => {
   const queryClient = useQueryClient();
 
-  const { data: events = [], isLoading } = useQuery({
+  const { data: events = [], isLoading, isError, error } = useQuery({
     queryKey: ['medicalEvents'],
     queryFn: fetchMedicalEvents,
     refetchOnMount: true,
@@ -61,6 +61,20 @@ const MedicalPage = () => {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError && error) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-destructive/50 bg-destructive/10 p-4 text-sm">
+          <p className="font-medium text-destructive mb-1">Impossible de charger le suivi médical</p>
+          <p className="text-muted-foreground font-mono text-xs mb-3">{String(error)}</p>
+          <p className="text-muted-foreground text-xs">
+            Vérifie ton <code className="bg-muted px-1 rounded">.env</code> et redémarre <code className="bg-muted px-1 rounded">npm run dev</code>.
+          </p>
+        </div>
       </div>
     );
   }
@@ -136,6 +150,7 @@ const MedicalPage = () => {
                       <Check className="w-4 h-4 mr-1.5" />
                       Marquer comme fait
                     </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

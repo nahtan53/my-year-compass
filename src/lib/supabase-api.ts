@@ -35,15 +35,25 @@ function normalizeDate(value: unknown): string {
   return s.includes('T') ? s.slice(0, 10) : s;
 }
 
+const MEAT_DEFAULT = 'none' as const;
+function meatFromRow(value: unknown, fallback: string): DailyLog['meatLunch'] {
+  const s = String(value ?? fallback);
+  const allowed: DailyLog['meatLunch'][] = ['none', 'red', 'chicken', 'duck', 'pork', 'lamb', 'vegetarian'];
+  return allowed.includes(s as DailyLog['meatLunch']) ? (s as DailyLog['meatLunch']) : MEAT_DEFAULT;
+}
+
 function dailyLogFromRow(row: Record<string, unknown>): DailyLog {
+  const oldMeat = row.meat_type != null ? String(row.meat_type) : MEAT_DEFAULT;
   return {
     id: String(row.id),
     date: normalizeDate(row.date),
     sportStatus: row.sport_status as DailyLog['sportStatus'],
-    meatType: row.meat_type as DailyLog['meatType'],
+    meatLunch: meatFromRow(row.meat_lunch, oldMeat),
+    meatDinner: meatFromRow(row.meat_dinner, oldMeat),
     alcohol: Boolean(row.alcohol),
     screenLimit: Boolean(row.screen_limit),
     reading: Boolean(row.reading),
+    negotiationStaff: Boolean((row as { negotiation_staff?: unknown }).negotiation_staff),
     dailyPhrase: String(row.daily_phrase ?? ''),
   };
 }
@@ -52,10 +62,12 @@ function dailyLogToRow(log: Partial<DailyLog>): Record<string, unknown> {
   const row: Record<string, unknown> = {};
   if (log.date != null) row.date = log.date;
   if (log.sportStatus != null) row.sport_status = log.sportStatus;
-  if (log.meatType != null) row.meat_type = log.meatType;
+  if (log.meatLunch != null) row.meat_lunch = log.meatLunch;
+  if (log.meatDinner != null) row.meat_dinner = log.meatDinner;
   if (log.alcohol != null) row.alcohol = log.alcohol;
   if (log.screenLimit != null) row.screen_limit = log.screenLimit;
   if (log.reading != null) row.reading = log.reading;
+  if (log.negotiationStaff != null) (row as { negotiation_staff?: boolean }).negotiation_staff = log.negotiationStaff;
   if (log.dailyPhrase != null) row.daily_phrase = log.dailyPhrase;
   return row;
 }
@@ -120,7 +132,10 @@ export async function upsertDailyLog(log: DailyLog): Promise<DailyLog> {
   row.date = log.date;
   // Ne pas envoyer id pour les nouveaux logs : la DB le génère. En update, le conflit se fait sur date.
   const { data, error } = await supabase.from('daily_logs').upsert(row, { onConflict: 'date' }).select().single();
-  if (error) throw error;
+  if (error) {
+    const msg = error.message || (error as { details?: string }).details || String(error);
+    throw new Error(msg);
+  }
   return dailyLogFromRow(data);
 }
 
