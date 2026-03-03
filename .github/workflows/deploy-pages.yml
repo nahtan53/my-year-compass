@@ -17,8 +17,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      ROLLUP_SKIP_NODEJS_NATIVE: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,10 +25,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Build
         env:
