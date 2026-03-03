@@ -34,6 +34,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          ROLLUP_SKIP_NODEJS_NATIVE: true
         run: npm run build
 
       - name: Fix SPA routing (404 fallback)
