@@ -24,6 +24,7 @@ export type MeatType =
   | 'duck'     // canard
   | 'pork'     // porc
   | 'lamb'     // mouton
+  | 'fish'     // poisson
   | 'vegetarian'; // végétarien
 
 export interface DailyLog {

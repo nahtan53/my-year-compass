@@ -38,7 +38,7 @@ function normalizeDate(value: unknown): string {
 const MEAT_DEFAULT = 'none' as const;
 function meatFromRow(value: unknown, fallback: string): DailyLog['meatLunch'] {
   const s = String(value ?? fallback);
-  const allowed: DailyLog['meatLunch'][] = ['none', 'red', 'chicken', 'duck', 'pork', 'lamb', 'vegetarian'];
+  const allowed: DailyLog['meatLunch'][] = ['none', 'red', 'chicken', 'duck', 'pork', 'lamb', 'fish', 'vegetarian'];
   return allowed.includes(s as DailyLog['meatLunch']) ? (s as DailyLog['meatLunch']) : MEAT_DEFAULT;
 }
 

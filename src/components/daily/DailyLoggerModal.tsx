@@ -53,6 +53,7 @@ const meatOptions: { value: MeatType; label: string; icon: React.ReactNode }[] =
   { value: 'duck', label: 'Canard', icon: <span className="text-lg">🦆</span> },
   { value: 'pork', label: 'Porc', icon: <span className="text-lg">🐷</span> },
   { value: 'lamb', label: 'Mouton', icon: <span className="text-lg">🐑</span> },
+  { value: 'fish', label: 'Poisson', icon: <span className="text-lg">🐟</span> },
   { value: 'vegetarian', label: 'Végétarien', icon: <Leaf className="w-4 h-4" /> },
 ];
 
