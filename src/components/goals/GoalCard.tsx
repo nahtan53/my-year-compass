@@ -19,7 +19,20 @@ import {
   Check,
   Clock,
   Target,
+  Trash2,
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -40,6 +53,7 @@ interface GoalCardProps {
   onDecrement?: (id: string) => void;
   onToggleComplete?: (id: string) => void;
   onStatusChange?: (id: string, status: Goal['status']) => void;
+  onDelete?: (id: string) => void;
 }
 
 export function GoalCard({
@@ -48,6 +62,7 @@ export function GoalCard({
   onDecrement,
   onToggleComplete,
   onStatusChange,
+  onDelete,
 }: GoalCardProps) {
   const Icon = iconMap[goal.icon] || Target;
   const progress = goal.targetValue
@@ -97,11 +112,50 @@ export function GoalCard({
             </div>
           </div>
           
-          {goal.type === 'one-shot' && (
-            <Badge variant="secondary" className={cn('text-xs shrink-0', statusColors[goal.status])}>
-              {statusLabels[goal.status]}
-            </Badge>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {goal.type === 'one-shot' && (
+              <Badge variant="secondary" className={cn('text-xs', statusColors[goal.status])}>
+                {statusLabels[goal.status]}
+              </Badge>
+            )}
+            {onDelete && (
+              <AlertDialog>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label="Supprimer l'objectif"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">Supprimer l'objectif</TooltipContent>
+                </Tooltip>
+                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Supprimer cet objectif ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      « {goal.title} » sera définitivement supprimé. Cette action est irréversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => onDelete(goal.id)}
+                    >
+                      Supprimer
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
 
         {/* Content based on type */}

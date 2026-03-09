@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,10 +7,26 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { fetchRecipes } from '@/lib/supabase-api';
 import type { Recipe } from '@/types/recipes';
 import { ChefHat, Loader2, ChevronDown, ChevronUp, Clock, Shuffle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const MAX_DURATION_MIN = 15;
+const MAX_DURATION_MAX = 180;
+const MAX_DURATION_STEP = 5;
+
+function filterRecipesByMaxMinutes(recipes: Recipe[], maxMinutes: number | null): Recipe[] {
+  if (maxMinutes == null) return recipes;
+  return recipes.filter((r) => {
+    const d = r.durationMinutes;
+    if (d == null) return false;
+    return d <= maxMinutes;
+  });
+}
 
 const ROULETTE_HISTORY_KEY = 'recettes-roulette-history';
 const HISTORY_SIZE = 5;
@@ -93,6 +109,8 @@ function RecipeCard({ recipe, defaultOpen = false }: { recipe: Recipe; defaultOp
 const RecettesPage = () => {
   const [rouletteHistory, setRouletteHistory] = useState<string[]>(getRouletteHistory);
   const [drawnRecipe, setDrawnRecipe] = useState<Recipe | null>(null);
+  const [limitByTime, setLimitByTime] = useState(false);
+  const [maxMinutes, setMaxMinutes] = useState(45);
 
   const { data: recipes = [], isLoading, isError, error } = useQuery({
     queryKey: ['recipes'],
@@ -100,10 +118,16 @@ const RecettesPage = () => {
     refetchOnMount: true,
   });
 
+  const effectiveMax = limitByTime ? maxMinutes : null;
+  const filteredRecipes = useMemo(
+    () => filterRecipesByMaxMinutes(recipes, effectiveMax),
+    [recipes, effectiveMax]
+  );
+
   const drawRandom = useCallback(() => {
     const excludeIds = new Set(rouletteHistory);
-    const pool = recipes.filter(r => !excludeIds.has(r.id));
-    const list = pool.length > 0 ? pool : recipes;
+    const pool = filteredRecipes.filter(r => !excludeIds.has(r.id));
+    const list = pool.length > 0 ? pool : filteredRecipes;
     if (list.length === 0) {
       setDrawnRecipe(null);
       return;
@@ -113,7 +137,7 @@ const RecettesPage = () => {
     setDrawnRecipe(recipe);
     pushRouletteHistory(recipe.id);
     setRouletteHistory(getRouletteHistory());
-  }, [recipes, rouletteHistory]);
+  }, [filteredRecipes, rouletteHistory]);
 
   if (isError && error) {
     return (
@@ -157,19 +181,51 @@ const RecettesPage = () => {
             Roulette
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="limit-time" className="text-sm text-muted-foreground cursor-pointer">
+                Limiter par temps max
+              </Label>
+              <Switch
+                id="limit-time"
+                checked={limitByTime}
+                onCheckedChange={setLimitByTime}
+              />
+            </div>
+            {limitByTime && (
+              <div className="space-y-2 pl-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Temps max</span>
+                  <span className="font-medium tabular-nums">{maxMinutes} min</span>
+                </div>
+                <Slider
+                  min={MAX_DURATION_MIN}
+                  max={MAX_DURATION_MAX}
+                  step={MAX_DURATION_STEP}
+                  value={[maxMinutes]}
+                  onValueChange={([v]) => setMaxMinutes(v ?? maxMinutes)}
+                  className="w-full"
+                />
+              </div>
+            )}
+          </div>
           <Button
             onClick={drawRandom}
-            disabled={recipes.length === 0}
+            disabled={filteredRecipes.length === 0}
             className="w-full gap-2"
             size="lg"
           >
             <Shuffle className="w-5 h-5" />
             Tirer une recette au hasard
           </Button>
-          {recipes.length === 0 && (
+          {filteredRecipes.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-2">
-              Ajoute des recettes dans Supabase (table <code className="text-xs bg-muted px-1 rounded">recipes</code>) pour utiliser la roulette.
+              {recipes.length === 0
+                ? 'Ajoute des recettes dans Supabase (table recipes) pour utiliser la roulette.'
+                : limitByTime
+                  ? `Aucune recette ≤ ${maxMinutes} min. Augmente le temps max ou désactive la limite.`
+                  : 'Aucune recette.'}
             </p>
           )}
           {drawnRecipe && (

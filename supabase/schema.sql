@@ -24,6 +24,7 @@ create table if not exists public.daily_logs (
   meat_lunch text not null default 'none' check (meat_lunch in ('none', 'red', 'chicken', 'duck', 'pork', 'lamb', 'fish', 'vegetarian')),
   meat_dinner text not null default 'none' check (meat_dinner in ('none', 'red', 'chicken', 'duck', 'pork', 'lamb', 'fish', 'vegetarian')),
   alcohol boolean not null default false,
+  alcohol_units integer not null default 0,
   screen_limit boolean not null default false,
   reading boolean not null default false,
   negotiation_staff boolean not null default false,

@@ -68,6 +68,7 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
   const [meatLunch, setMeatLunch] = useState<MeatType>('none');
   const [meatDinner, setMeatDinner] = useState<MeatType>('none');
   const [alcohol, setAlcohol] = useState(false);
+  const [alcoholUnits, setAlcoholUnits] = useState(0);
   const [screenLimit, setScreenLimit] = useState(false);
   const [reading, setReading] = useState(false);
   const [negotiationStaff, setNegotiationStaff] = useState(false);
@@ -97,6 +98,7 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
       setMeatLunch(log.meatLunch);
       setMeatDinner(log.meatDinner);
       setAlcohol(log.alcohol);
+      setAlcoholUnits(log.alcoholUnits ?? (log.alcohol ? 1 : 0));
       setScreenLimit(log.screenLimit);
       setReading(log.reading);
       setNegotiationStaff(log.negotiationStaff);
@@ -106,6 +108,7 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
       setMeatLunch('none');
       setMeatDinner('none');
       setAlcohol(false);
+      setAlcoholUnits(0);
       setScreenLimit(false);
       setReading(false);
       setNegotiationStaff(false);
@@ -150,6 +153,7 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
         setMeatLunch('none');
         setMeatDinner('none');
         setAlcohol(false);
+      setAlcoholUnits(0);
         setScreenLimit(false);
         setReading(false);
         setNegotiationStaff(false);
@@ -170,6 +174,7 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
   });
 
   const handleSubmit = () => {
+    const units = alcohol ? Math.max(1, alcoholUnits || 1) : 0;
     const log: DailyLog = {
       id: '', // upsert se fait sur date en base
       date: dateStr,
@@ -177,6 +182,7 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
       meatLunch,
       meatDinner,
       alcohol,
+      alcoholUnits: units,
       screenLimit,
       reading,
       negotiationStaff,
@@ -302,12 +308,49 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
-                  <div className="flex items-center gap-2">
-                    <Wine className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">Alcool consommé</span>
+                <div className="space-y-2 p-3 rounded-lg border border-border bg-card">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Wine className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">Alcool consommé</span>
+                    </div>
+                    <Switch
+                      checked={alcohol}
+                      onCheckedChange={(value) => {
+                        setAlcohol(value);
+                        if (value && (!alcoholUnits || alcoholUnits < 1)) {
+                          setAlcoholUnits(1);
+                        }
+                        if (!value) {
+                          setAlcoholUnits(0);
+                        }
+                      }}
+                    />
                   </div>
-                  <Switch checked={alcohol} onCheckedChange={setAlcohol} />
+                  {alcohol && (
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="text-xs text-muted-foreground">Doses bar</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          className="h-7 w-7 rounded-md border border-border text-xs flex items-center justify-center bg-background hover:bg-muted"
+                          onClick={() => setAlcoholUnits(u => Math.max(1, (u || 1) - 1))}
+                        >
+                          -
+                        </button>
+                        <span className="min-w-[2rem] text-center text-sm font-mono">
+                          {Math.max(1, alcoholUnits || 1)}
+                        </span>
+                        <button
+                          type="button"
+                          className="h-7 w-7 rounded-md border border-border text-xs flex items-center justify-center bg-background hover:bg-muted"
+                          onClick={() => setAlcoholUnits(u => Math.min(10, (u || 1) + 1))}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

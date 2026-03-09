@@ -43,21 +43,22 @@ function useMonthlyChartData(dailyLogs: DailyLog[], startMonth: Date, endMonth: 
       sport: number;
       reading: number;
       screenLimit: number;
-      /** Jours sans alcool (alcohol === false ? 1 : 0) */
-      noAlcohol: number;
+      /** Doses d'alcool consommées ce jour-là */
+      alcoholUnits: number;
       /** Jours sans « négociation avec le personnel » (negotiationStaff === false ? 1 : 0) */
       noNegotiation: number;
       sportCumul: number | null;
       readingCumul: number | null;
       screenCumul: number | null;
-      noAlcoholCumul: number | null;
+      /** Cumul des doses d'alcool sur le mois */
+      alcoholUnitsCumul: number | null;
       noNegotiationCumul: number | null;
     };
     const data: DayData[] = [];
     let sportCumul = 0;
     let readingCumul = 0;
     let screenCumul = 0;
-    let noAlcoholCumul = 0;
+    let alcoholUnitsCumul = 0;
     let noNegotiationCumul = 0;
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -69,12 +70,12 @@ function useMonthlyChartData(dailyLogs: DailyLog[], startMonth: Date, endMonth: 
         const sport = log.sportStatus !== 'rest' ? 1 : 0;
         const reading = log.reading ? 1 : 0;
         const screen = log.screenLimit ? 1 : 0;
-        const noAlcohol = log.alcohol ? 0 : 1;
+        const units = log.alcoholUnits ?? (log.alcohol ? 1 : 0);
         const noNegotiation = log.negotiationStaff ? 0 : 1;
         sportCumul += sport;
         readingCumul += reading;
         screenCumul += screen;
-        noAlcoholCumul += noAlcohol;
+        alcoholUnitsCumul += units;
         noNegotiationCumul += noNegotiation;
         data.push({
           day: d,
@@ -82,12 +83,12 @@ function useMonthlyChartData(dailyLogs: DailyLog[], startMonth: Date, endMonth: 
           sport,
           reading,
           screenLimit: screen,
-          noAlcohol,
+          alcoholUnits: units,
           noNegotiation,
           sportCumul,
           readingCumul,
           screenCumul,
-          noAlcoholCumul,
+          alcoholUnitsCumul,
           noNegotiationCumul,
         });
       } else {
@@ -97,12 +98,12 @@ function useMonthlyChartData(dailyLogs: DailyLog[], startMonth: Date, endMonth: 
           sport: 0,
           reading: 0,
           screenLimit: 0,
-          noAlcohol: 0,
+          alcoholUnits: 0,
           noNegotiation: 0,
           sportCumul: null,
           readingCumul: null,
           screenCumul: null,
-          noAlcoholCumul: null,
+          alcoholUnitsCumul: null,
           noNegotiationCumul: null,
         });
       }
@@ -149,8 +150,10 @@ const AnalysePage = () => {
   const sportDaysThisMonth = logsThisMonth.filter(l => l.sportStatus !== 'rest').length;
   const readingDaysThisMonth = logsThisMonth.filter(l => l.reading).length;
   const screenLimitDaysThisMonth = logsThisMonth.filter(l => l.screenLimit).length;
-  // Inversés : on compte les jours SANS alcool / SANS négociation
-  const noAlcoholDaysThisMonth = logsThisMonth.filter(l => !l.alcohol).length;
+  const alcoholDosesThisMonth = logsThisMonth.reduce(
+    (sum, l) => sum + (l.alcoholUnits ?? (l.alcohol ? 1 : 0)),
+    0
+  );
   const noNegotiationDaysThisMonth = logsThisMonth.filter(l => !l.negotiationStaff).length;
   const daysInMonth = endMonth.getDate();
 
@@ -365,10 +368,14 @@ const AnalysePage = () => {
                     <Wine className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold">{noAlcoholDaysThisMonth}</div>
-                    <div className="text-xs text-muted-foreground">jours sans alcool / {daysInMonth}</div>
+                    <div className="text-2xl font-bold">{alcoholDosesThisMonth}</div>
+                    <div className="text-xs text-muted-foreground">doses d'alcool sur le mois</div>
                     <Progress
-                      value={daysInMonth ? Math.round((noAlcoholDaysThisMonth / daysInMonth) * 100) : 0}
+                      value={
+                        daysInMonth
+                          ? Math.min(100, Math.round((alcoholDosesThisMonth / daysInMonth) * 100))
+                          : 0
+                      }
                       className="h-1.5 mt-1 max-w-[120px]"
                     />
                   </div>
@@ -376,15 +383,30 @@ const AnalysePage = () => {
               </HoverCardTrigger>
               <HoverCardContent className="w-80 p-0" align="start">
                 <div className="p-3 pb-0">
-                  <p className="text-sm font-medium">Sans alcool</p>
+                  <p className="text-sm font-medium">Évolution des doses</p>
                 </div>
-                <ChartContainer config={{ noAlcoholCumul: { label: 'Jours sans alcool', color: 'hsl(var(--primary))' } }} className="h-[180px] w-full">
+                <ChartContainer
+                  config={{
+                    alcoholUnitsCumul: {
+                      label: "Cumul des doses d'alcool",
+                      color: 'hsl(var(--primary))',
+                    },
+                  }}
+                  className="h-[180px] w-full"
+                >
                   <LineChart data={monthlyChartData} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} width={24} />
+                    <YAxis tick={{ fontSize: 10 }} width={24} domain={[0, 50]} />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="noAlcoholCumul" stroke="var(--color-noAlcoholCumul)" strokeWidth={2} dot={false} connectNulls={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="alcoholUnitsCumul"
+                      stroke="var(--color-alcoholUnitsCumul)"
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls={false}
+                    />
                   </LineChart>
                 </ChartContainer>
               </HoverCardContent>

@@ -51,6 +51,12 @@ function dailyLogFromRow(row: Record<string, unknown>): DailyLog {
     meatLunch: meatFromRow(row.meat_lunch, oldMeat),
     meatDinner: meatFromRow(row.meat_dinner, oldMeat),
     alcohol: Boolean(row.alcohol),
+    alcoholUnits:
+      row.alcohol_units != null
+        ? Number(row.alcohol_units)
+        : Boolean(row.alcohol)
+        ? 1
+        : 0,
     screenLimit: Boolean(row.screen_limit),
     reading: Boolean(row.reading),
     negotiationStaff: Boolean((row as { negotiation_staff?: unknown }).negotiation_staff),
@@ -65,6 +71,8 @@ function dailyLogToRow(log: Partial<DailyLog>): Record<string, unknown> {
   if (log.meatLunch != null) row.meat_lunch = log.meatLunch;
   if (log.meatDinner != null) row.meat_dinner = log.meatDinner;
   if (log.alcohol != null) row.alcohol = log.alcohol;
+   // on force 0 si non renseigné
+  if (log.alcoholUnits != null) row.alcohol_units = log.alcoholUnits;
   if (log.screenLimit != null) row.screen_limit = log.screenLimit;
   if (log.reading != null) row.reading = log.reading;
   if (log.negotiationStaff != null) (row as { negotiation_staff?: boolean }).negotiation_staff = log.negotiationStaff;
@@ -116,6 +124,12 @@ export async function updateGoal(id: string, updates: Partial<Goal>): Promise<Go
   const { data, error } = await supabase.from('goals').update(row).eq('id', id).select().single();
   if (error) throw error;
   return goalFromRow(data);
+}
+
+export async function deleteGoal(id: string): Promise<void> {
+  if (!isSupabaseConfigured() || !supabase) throw new Error('Supabase non configuré');
+  const { error } = await supabase.from('goals').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // ——— Daily logs ———

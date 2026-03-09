@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Target, BarChart3, Flame, Loader2 } from 'lucide-react';
 import { CreateGoalModal } from '@/components/goals/CreateGoalModal';
-import { fetchGoals, fetchDailyLogs, updateGoal } from '@/lib/supabase-api';
+import { fetchGoals, fetchDailyLogs, updateGoal, deleteGoal } from '@/lib/supabase-api';
 import { toast } from '@/hooks/use-toast';
 import { computeHabitCurrentValue } from '@/lib/habit-sync';
 
@@ -53,6 +53,17 @@ const Dashboard = () => {
     onSuccess: () => queryClient.refetchQueries({ queryKey: ['goals'] }),
     onError: (err) => toast({ title: 'Erreur', description: String(err), variant: 'destructive' }),
   });
+
+  const deleteGoalMutation = useMutation({
+    mutationFn: deleteGoal,
+    onSuccess: () => {
+      queryClient.refetchQueries({ queryKey: ['goals'] });
+      toast({ title: 'Objectif supprimé' });
+    },
+    onError: (err) => toast({ title: 'Erreur', description: String(err), variant: 'destructive' }),
+  });
+
+  const handleDelete = (id: string) => deleteGoalMutation.mutate(id);
 
   const handleIncrement = (id: string) => {
     const goal = goals.find(g => g.id === id);
@@ -203,6 +214,7 @@ const Dashboard = () => {
                 onIncrement={handleIncrement}
                 onDecrement={handleDecrement}
                 onToggleComplete={handleToggleComplete}
+                onDelete={handleDelete}
               />
             ))
           )}
@@ -224,6 +236,7 @@ const Dashboard = () => {
                 key={goal.id}
                 goal={goal}
                 onToggleComplete={handleToggleComplete}
+                onDelete={handleDelete}
               />
             ))
           )}
@@ -246,6 +259,7 @@ const Dashboard = () => {
                 goal={goal}
                 onIncrement={handleIncrement}
                 onDecrement={handleDecrement}
+                onDelete={handleDelete}
               />
             ))
           )}
@@ -263,7 +277,7 @@ const Dashboard = () => {
             </div>
           ) : (
             habitGoals.map(goal => (
-              <GoalCard key={goal.id} goal={goal} />
+              <GoalCard key={goal.id} goal={goal} onDelete={handleDelete} />
             ))
           )}
         </TabsContent>

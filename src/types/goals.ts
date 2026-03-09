@@ -36,6 +36,8 @@ export interface DailyLog {
   /** Viande au dîner */
   meatDinner: MeatType;
   alcohol: boolean;
+  /** Nombre de « doses bar » consommées (0 si pas d'alcool) */
+  alcoholUnits: number;
   screenLimit: boolean;
   reading: boolean;
   /** Négociation avec le personnel (tracking discret) */
