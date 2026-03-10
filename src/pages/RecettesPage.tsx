@@ -10,14 +10,15 @@ import {
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { fetchRecipes } from '@/lib/supabase-api';
-import type { Recipe } from '@/types/recipes';
+import { fetchRecipes, fetchSeasonalIngredientsForMonth } from '@/lib/supabase-api';
+import type { Recipe, SeasonalIngredient } from '@/types/recipes';
 import { ChefHat, Loader2, ChevronDown, ChevronUp, Clock, Shuffle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const MAX_DURATION_MIN = 15;
 const MAX_DURATION_MAX = 180;
 const MAX_DURATION_STEP = 5;
+const COMPAT_THRESHOLD = 0.75; // 75 %
 
 function filterRecipesByMaxMinutes(recipes: Recipe[], maxMinutes: number | null): Recipe[] {
   if (maxMinutes == null) return recipes;
@@ -48,7 +49,37 @@ function pushRouletteHistory(id: string): void {
   localStorage.setItem(ROULETTE_HISTORY_KEY, JSON.stringify(next));
 }
 
-function RecipeCard({ recipe, defaultOpen = false }: { recipe: Recipe; defaultOpen?: boolean }) {
+function computeSeasonCompatibility(recipe: Recipe, seasonal: SeasonalIngredient[]): number {
+  if (!seasonal.length || !recipe.ingredients.length) return 1; // 100% si pas de données
+
+  const seasonalNames = seasonal.map((s) => s.name.toLowerCase());
+  let total = 0;
+  let matches = 0;
+
+  for (const rawLine of recipe.ingredients) {
+    const line = rawLine.toLowerCase();
+    // On ne garde que la partie avant les " : " pour isoler l'ingrédient principal
+    const namePart = line.split(':')[0]?.trim();
+    if (!namePart) continue;
+    total++;
+    if (seasonalNames.some((name) => namePart.includes(name))) {
+      matches++;
+    }
+  }
+
+  if (!total) return 1;
+  return matches / total;
+}
+
+function RecipeCard({
+  recipe,
+  defaultOpen = false,
+  compatibility,
+}: {
+  recipe: Recipe;
+  defaultOpen?: boolean;
+  compatibility?: number | null;
+}) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <Card className="border-border/50 overflow-hidden">
@@ -59,12 +90,19 @@ function RecipeCard({ recipe, defaultOpen = false }: { recipe: Recipe; defaultOp
               <ChefHat className="w-4 h-4 text-primary shrink-0" />
               {recipe.title}
             </CardTitle>
-            {recipe.durationMinutes != null && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
-                <Clock className="w-3.5 h-3.5" />
-                {recipe.durationMinutes} min
-              </span>
-            )}
+            <div className="flex flex-col items-end gap-0.5 shrink-0">
+              {recipe.durationMinutes != null && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {recipe.durationMinutes} min
+                </span>
+              )}
+              {typeof compatibility === 'number' && (
+                <span className="text-[10px] text-muted-foreground">
+                  Compat saison&nbsp;: {Math.round(compatibility * 100)}%
+                </span>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0 space-y-3">
@@ -111,6 +149,7 @@ const RecettesPage = () => {
   const [drawnRecipe, setDrawnRecipe] = useState<Recipe | null>(null);
   const [limitByTime, setLimitByTime] = useState(false);
   const [maxMinutes, setMaxMinutes] = useState(45);
+  const [useSeasonFilter, setUseSeasonFilter] = useState(false);
 
   const { data: recipes = [], isLoading, isError, error } = useQuery({
     queryKey: ['recipes'],
@@ -118,11 +157,36 @@ const RecettesPage = () => {
     refetchOnMount: true,
   });
 
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+
+  const { data: seasonal = [] } = useQuery({
+    queryKey: ['seasonal-ingredients', currentMonth],
+    queryFn: () => fetchSeasonalIngredientsForMonth(currentMonth),
+    refetchOnMount: true,
+    enabled: useSeasonFilter,
+  });
+
   const effectiveMax = limitByTime ? maxMinutes : null;
-  const filteredRecipes = useMemo(
-    () => filterRecipesByMaxMinutes(recipes, effectiveMax),
-    [recipes, effectiveMax]
-  );
+
+  const compatibilityById = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!useSeasonFilter || !seasonal.length) return map;
+    recipes.forEach((recipe) => {
+      map.set(recipe.id, computeSeasonCompatibility(recipe, seasonal));
+    });
+    return map;
+  }, [recipes, seasonal, useSeasonFilter]);
+
+  const filteredRecipes = useMemo(() => {
+    const byTime = filterRecipesByMaxMinutes(recipes, effectiveMax);
+    if (!useSeasonFilter) return byTime;
+    return byTime.filter((recipe) => {
+      const score =
+        compatibilityById.get(recipe.id) ?? computeSeasonCompatibility(recipe, seasonal);
+      return score >= COMPAT_THRESHOLD;
+    });
+  }, [recipes, effectiveMax, useSeasonFilter, compatibilityById, seasonal]);
 
   const drawRandom = useCallback(() => {
     const excludeIds = new Set(rouletteHistory);
@@ -184,6 +248,21 @@ const RecettesPage = () => {
         <CardContent className="space-y-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="season-filter" className="text-sm text-muted-foreground cursor-pointer">
+                Filtre saison (ingrédients de saison)
+              </Label>
+              <Switch
+                id="season-filter"
+                checked={useSeasonFilter}
+                onCheckedChange={setUseSeasonFilter}
+              />
+            </div>
+            {useSeasonFilter && !seasonal.length && (
+              <p className="text-[11px] text-muted-foreground">
+                Aucune donnée dans <code className="bg-muted px-1 rounded">seasonal_ingredients</code> pour ce mois.
+              </p>
+            )}
+            <div className="flex items-center justify-between gap-2">
               <Label htmlFor="limit-time" className="text-sm text-muted-foreground cursor-pointer">
                 Limiter par temps max
               </Label>
@@ -231,7 +310,15 @@ const RecettesPage = () => {
           {drawnRecipe && (
             <div className="pt-2 border-t border-border/50">
               <p className="text-xs text-muted-foreground mb-2">Recette tirée :</p>
-              <RecipeCard recipe={drawnRecipe} defaultOpen />
+              <RecipeCard
+                recipe={drawnRecipe}
+                defaultOpen
+                compatibility={
+                  useSeasonFilter && drawnRecipe
+                    ? compatibilityById.get(drawnRecipe.id) ?? null
+                    : null
+                }
+              />
             </div>
           )}
         </CardContent>
@@ -249,7 +336,13 @@ const RecettesPage = () => {
         ) : (
           <div className="space-y-3">
             {recipes.map(recipe => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                compatibility={
+                  useSeasonFilter ? compatibilityById.get(recipe.id) ?? null : null
+                }
+              />
             ))}
           </div>
         )}

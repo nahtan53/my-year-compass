@@ -5,3 +5,10 @@ export interface Recipe {
   steps: string[];
   durationMinutes: number | null;
 }
+
+export interface SeasonalIngredient {
+  id: string;
+  name: string;
+  month: number;
+  category: string | null;
+}

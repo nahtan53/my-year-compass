@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Goal, DailyLog, MedicalEvent } from '@/types/goals';
-import type { Recipe } from '@/types/recipes';
+import type { Recipe, SeasonalIngredient } from '@/types/recipes';
 
 // Helpers : snake_case (DB) <-> camelCase (app)
 function goalFromRow(row: Record<string, unknown>): Goal {
@@ -188,4 +188,21 @@ export async function fetchRecipes(): Promise<Recipe[]> {
   const { data, error } = await supabase.from('recipes').select('*').order('title', { ascending: true });
   if (error) throw error;
   return (data ?? []).map(recipeFromRow);
+}
+
+// ——— Seasonal ingredients ———
+export async function fetchSeasonalIngredientsForMonth(month: number): Promise<SeasonalIngredient[]> {
+  if (!isSupabaseConfigured() || !supabase) return [];
+  const { data, error } = await supabase
+    .from('seasonal_ingredients')
+    .select('*')
+    .eq('month', month);
+
+  if (error) throw error;
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    name: String(row.name),
+    month: Number(row.month),
+    category: row.category != null ? String(row.category) : null,
+  }));
 }
