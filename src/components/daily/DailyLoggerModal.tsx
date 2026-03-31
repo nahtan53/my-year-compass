@@ -389,10 +389,10 @@ export function DailyLoggerModal({ open, onOpenChange }: DailyLoggerModalProps) 
                   value={dailyPhrase}
                   onChange={(e) => setDailyPhrase(e.target.value)}
                   className="min-h-[100px] resize-none"
-                  maxLength={500}
+                  maxLength={1000}
                 />
                 <span className="text-xs text-muted-foreground text-right block">
-                  {dailyPhrase.length}/500
+                  {dailyPhrase.length}/1000
                 </span>
               </div>
 
