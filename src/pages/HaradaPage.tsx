@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 const SUBGOAL_POSITIONS = [0, 1, 2, 3, 5, 6, 7, 8];
 const ACTION_POSITIONS = SUBGOAL_POSITIONS;
 
-type EditorTarget = { kind: 'main' } | { kind: 'action'; goalIndex: number; actionIndex: number };
+type EditorTarget = { kind: 'main' } | { kind: 'subgoal'; goalIndex: number } | { kind: 'action'; goalIndex: number; actionIndex: number };
 
 function getSubgoalIndex(position: number) {
   return SUBGOAL_POSITIONS.indexOf(position);
@@ -79,13 +79,24 @@ export default function HaradaPage() {
 
   const openEditor = (target: EditorTarget) => {
     setEditor(target);
-    setDraft(target.kind === 'main' ? plan.mainGoal : plan.actions[target.goalIndex][target.actionIndex]);
+    setDraft(
+      target.kind === 'main'
+        ? plan.mainGoal
+        : target.kind === 'subgoal'
+        ? plan.subgoals[target.goalIndex]
+        : plan.actions[target.goalIndex][target.actionIndex]
+    );
   };
 
   const saveEditor = () => {
     if (!editor) return;
     setPlan((current) => {
       if (editor.kind === 'main') return { ...current, mainGoal: draft };
+      if (editor.kind === 'subgoal') {
+        const subgoals = [...current.subgoals];
+        subgoals[editor.goalIndex] = draft;
+        return { ...current, subgoals };
+      }
       const actions = current.actions.map((row) => [...row]);
       actions[editor.goalIndex][editor.actionIndex] = draft;
       return { ...current, actions };
@@ -127,9 +138,17 @@ export default function HaradaPage() {
       );
     });
     cells.splice(4, 0, (
-      <div key="center" className="flex aspect-square min-w-0 items-center justify-center border-2 border-primary/70 bg-primary/15 p-2 text-center text-xs font-semibold leading-snug">
-        <CellText>{plan.subgoals[goalIndex]}</CellText>
-      </div>
+      <button
+        key="center"
+        type="button"
+        onClick={() => openEditor({ kind: 'subgoal', goalIndex })}
+        aria-label="Modifier le levier"
+        className="flex aspect-square min-w-0 items-center justify-center border-2 border-primary/70 bg-primary/15 p-2 text-center text-xs font-semibold leading-snug transition-colors hover:bg-primary/25"
+      >
+        <span className="line-clamp-3 w-full whitespace-normal break-words">
+          {plan.subgoals[goalIndex] || 'Nommer le levier'}
+        </span>
+      </button>
     ));
 
     return (
@@ -246,7 +265,7 @@ function EditorDialog({
     <Dialog open={editor !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editor?.kind === 'main' ? 'Objectif central' : 'Action concrète'}</DialogTitle>
+          <DialogTitle>{editor?.kind === 'main' ? 'Objectif central' : editor?.kind === 'subgoal' ? 'Nom du levier' : 'Action concrète'}</DialogTitle>
           <DialogDescription>Formulez un élément clair et assez précis pour guider la prochaine étape.</DialogDescription>
         </DialogHeader>
         <Textarea autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Écrire ici…" rows={4} />
