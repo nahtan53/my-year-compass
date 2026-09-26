@@ -1,6 +1,51 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Goal, DailyLog, MedicalEvent } from '@/types/goals';
 import type { Recipe, SeasonalIngredient } from '@/types/recipes';
+import { createEmptyHaradaPlan, normalizeHaradaPlan, type HaradaPlan } from '@/types/harada';
+
+const HARADA_STORAGE_KEY = 'my-year-compass-harada-plan';
+
+async function getHaradaUserId(): Promise<string> {
+  if (!supabase) throw new Error('Supabase non configuré');
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  const userId = data.session?.user.id;
+  if (!userId) throw new Error('Session Supabase manquante');
+  return userId;
+}
+
+export async function fetchHaradaPlan(): Promise<HaradaPlan> {
+  if (!isSupabaseConfigured() || !supabase) {
+    try {
+      const stored = window.localStorage.getItem(HARADA_STORAGE_KEY);
+      return stored ? normalizeHaradaPlan(JSON.parse(stored)) : createEmptyHaradaPlan();
+    } catch {
+      return createEmptyHaradaPlan();
+    }
+  }
+
+  const userId = await getHaradaUserId();
+  const { data, error } = await supabase
+    .from('harada_plans')
+    .select('content')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return normalizeHaradaPlan(data?.content);
+}
+
+export async function saveHaradaPlan(plan: HaradaPlan): Promise<void> {
+  if (!isSupabaseConfigured() || !supabase) {
+    window.localStorage.setItem(HARADA_STORAGE_KEY, JSON.stringify(plan));
+    return;
+  }
+
+  const userId = await getHaradaUserId();
+  const { error } = await supabase
+    .from('harada_plans')
+    .upsert({ user_id: userId, content: plan }, { onConflict: 'user_id' });
+  if (error) throw error;
+}
 
 // Helpers : snake_case (DB) <-> camelCase (app)
 function goalFromRow(row: Record<string, unknown>): Goal {

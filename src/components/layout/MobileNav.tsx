@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, ChefHat, Stethoscope } from 'lucide-react';
+import { LayoutDashboard, BarChart3, ChefHat, Stethoscope, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { to: '/analyse', icon: BarChart3, label: 'Skibidi Journée' },
   { to: '/recettes', icon: ChefHat, label: 'Recettes' },
   { to: '/medical', icon: Stethoscope, label: 'Médical' },
+  { to: '/harada', icon: Target, label: 'Harada' },
 ];
 
 export function MobileNav() {

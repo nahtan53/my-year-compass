@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import AnalysePage from "./pages/AnalysePage";
 import RecettesPage from "./pages/RecettesPage";
 import MedicalPage from "./pages/MedicalPage";
+import HaradaPage from "./pages/HaradaPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -66,6 +67,8 @@ const App = () => (
                   <Route path="/analyse" element={<AnalysePage />} />
                   <Route path="/recettes" element={<RecettesPage />} />
                   <Route path="/medical" element={<MedicalPage />} />
+                  <Route path="/harada" element={<HaradaPage />} />
+                  <Route path="/harada/:subgoalId" element={<HaradaPage />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -44,6 +44,12 @@ create table if not exists public.medical_events (
   updated_at timestamptz default now()
 );
 
+create table if not exists public.harada_plans (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  content jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 -- Index pour les requêtes courantes
 create index if not exists idx_daily_logs_date on public.daily_logs (date);
 create index if not exists idx_goals_status on public.goals (status);
@@ -53,7 +59,17 @@ create index if not exists idx_medical_events_next_due on public.medical_events 
 alter table public.goals enable row level security;
 alter table public.daily_logs enable row level security;
 alter table public.medical_events enable row level security;
+alter table public.harada_plans enable row level security;
 
 create policy "Allow all for goals" on public.goals for all using (true) with check (true);
 create policy "Allow all for daily_logs" on public.daily_logs for all using (true) with check (true);
 create policy "Allow all for medical_events" on public.medical_events for all using (true) with check (true);
+drop policy if exists "Allow all for harada_plans" on public.harada_plans;
+drop policy if exists "Users can view their Harada plan" on public.harada_plans;
+drop policy if exists "Users can create their Harada plan" on public.harada_plans;
+drop policy if exists "Users can update their Harada plan" on public.harada_plans;
+drop policy if exists "Users can delete their Harada plan" on public.harada_plans;
+create policy "Users can view their Harada plan" on public.harada_plans for select using (auth.uid() = user_id);
+create policy "Users can create their Harada plan" on public.harada_plans for insert with check (auth.uid() = user_id);
+create policy "Users can update their Harada plan" on public.harada_plans for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can delete their Harada plan" on public.harada_plans for delete using (auth.uid() = user_id);

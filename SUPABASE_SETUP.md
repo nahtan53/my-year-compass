@@ -19,7 +19,8 @@ Actuellement **aucune base Supabase n’est utilisée** : l’app tourne uniquem
 
 1. Dans le dashboard Supabase : **SQL Editor** → **New query**.
 2. Colle et exécute le script fourni dans ce repo : **`supabase/schema.sql`** (à la racine du projet).
-3. Vérifie dans **Table Editor** que les tables `goals`, `daily_logs` et `medical_events` existent.
+3. Vérifie dans **Table Editor** que les tables `goals`, `daily_logs`, `medical_events` et `harada_plans` existent.
+4. Pour une base déjà initialisée avant l’ajout de Harada, exécute `supabase/migrations/20260926000000_create_harada_plans.sql` dans le SQL Editor. Pour une base vierge, `supabase/schema.sql` crée déjà cette table.
 
 ---
 
