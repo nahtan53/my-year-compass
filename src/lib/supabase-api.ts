@@ -2,8 +2,10 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { Goal, DailyLog, MedicalEvent } from '@/types/goals';
 import type { Recipe, SeasonalIngredient } from '@/types/recipes';
 import { createEmptyHaradaPlan, normalizeHaradaPlan, type HaradaPlan } from '@/types/harada';
+import type { Task, TaskQuadrant } from '@/types/task';
 
 const HARADA_STORAGE_KEY = 'my-year-compass-harada-plan';
+const TASKS_STORAGE_KEY = 'my-year-compass-tasks';
 
 async function getHaradaUserId(): Promise<string> {
   if (!supabase) throw new Error('Supabase non configuré');
@@ -44,6 +46,100 @@ export async function saveHaradaPlan(plan: HaradaPlan): Promise<void> {
   const { error } = await supabase
     .from('harada_plans')
     .upsert({ user_id: userId, content: plan }, { onConflict: 'user_id' });
+  if (error) throw error;
+}
+
+function readLocalTasks(): Task[] {
+  const stored = window.localStorage.getItem(TASKS_STORAGE_KEY);
+  if (!stored) return [];
+
+  const parsed: unknown = JSON.parse(stored);
+  if (!Array.isArray(parsed)) throw new Error('Les tâches enregistrées localement sont invalides');
+  return parsed.map((item): Task => {
+    if (
+      !item ||
+      typeof item !== 'object' ||
+      typeof item.id !== 'string' ||
+      typeof item.title !== 'string' ||
+      typeof item.completed !== 'boolean' ||
+      typeof item.createdAt !== 'string' ||
+      (item.quadrant !== null &&
+        !['do', 'schedule', 'delegate', 'eliminate'].includes(item.quadrant))
+    ) {
+      throw new Error('Une tâche enregistrée localement est invalide');
+    }
+    return {
+      id: item.id,
+      title: item.title,
+      completed: item.completed,
+      createdAt: item.createdAt,
+      quadrant: item.quadrant as TaskQuadrant | null,
+    };
+  });
+}
+
+function taskFromRow(row: Record<string, unknown>): Task {
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    quadrant: row.quadrant == null ? null : row.quadrant as TaskQuadrant,
+    completed: Boolean(row.completed),
+    createdAt: String(row.created_at),
+  };
+}
+
+export async function fetchTasks(): Promise<Task[]> {
+  if (!isSupabaseConfigured() || !supabase) return readLocalTasks();
+
+  const userId = await getHaradaUserId();
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('id, title, quadrant, completed, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(taskFromRow);
+}
+
+export async function upsertTask(task: Task): Promise<Task> {
+  if (!isSupabaseConfigured() || !supabase) {
+    const tasks = readLocalTasks();
+    const nextTasks = tasks.some((item) => item.id === task.id)
+      ? tasks.map((item) => item.id === task.id ? task : item)
+      : [...tasks, task];
+    window.localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(nextTasks));
+    return task;
+  }
+
+  const userId = await getHaradaUserId();
+  const { data, error } = await supabase
+    .from('tasks')
+    .upsert(
+      {
+        id: task.id,
+        user_id: userId,
+        title: task.title,
+        quadrant: task.quadrant,
+        completed: task.completed,
+        created_at: task.createdAt,
+      },
+      { onConflict: 'id' },
+    )
+    .select('id, title, quadrant, completed, created_at')
+    .single();
+  if (error) throw error;
+  return taskFromRow(data);
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  if (!isSupabaseConfigured() || !supabase) {
+    const tasks = readLocalTasks().filter((task) => task.id !== id);
+    window.localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
+    return;
+  }
+
+  const userId = await getHaradaUserId();
+  const { error } = await supabase.from('tasks').delete().eq('id', id).eq('user_id', userId);
   if (error) throw error;
 }
 

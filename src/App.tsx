@@ -12,6 +12,7 @@ import AnalysePage from "./pages/AnalysePage";
 import RecettesPage from "./pages/RecettesPage";
 import MedicalPage from "./pages/MedicalPage";
 import HaradaPage from "./pages/HaradaPage";
+import TasksPage from "./pages/TasksPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -69,6 +70,7 @@ const App = () => (
                   <Route path="/medical" element={<MedicalPage />} />
                   <Route path="/harada" element={<HaradaPage />} />
                   <Route path="/harada/:subgoalId" element={<HaradaPage />} />
+                  <Route path="/taches" element={<TasksPage />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
